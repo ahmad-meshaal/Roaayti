@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "روايتي - Literary Platform"
+version = "1.0.0"
+id = "NSghNdKPOyeuU0vUrkO_"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = ["/"]
+localPort = 5000
+
+[services.development]
+run = "pnpm --filter @workspace/literary-platform run dev"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/literary-platform", "run", "build"]
+publicDir = "artifacts/literary-platform/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "5000"
+BASE_PATH = "/"
