@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, booksTable, linksTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import {
   UpdateMyProfileBody,
   UploadAvatarBody,
+  UpdateMyUsernameBody,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -63,6 +64,42 @@ router.get("/users/:username", async (req, res): Promise<void> => {
       icon: l.icon,
       sortOrder: l.sortOrder,
     })),
+  });
+});
+
+router.patch("/users/me/username", requireAuth, async (req, res): Promise<void> => {
+  const parsed = UpdateMyUsernameBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "اسم المستخدم يجب أن يكون 3-30 حرف (حروف إنجليزية صغيرة، أرقام، شرطة سفلية)" });
+    return;
+  }
+
+  const newUsername = parsed.data.username.toLowerCase();
+
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(and(eq(usersTable.username, newUsername), ne(usersTable.id, req.userId!)))
+    .limit(1);
+
+  if (existing) {
+    res.status(409).json({ error: "اسم المستخدم مستخدم بالفعل" });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set({ username: newUsername })
+    .where(eq(usersTable.id, req.userId!))
+    .returning();
+
+  res.json({
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    createdAt: user.createdAt,
   });
 });
 

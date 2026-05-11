@@ -2,9 +2,10 @@ import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { useLanguage } from "@/lib/language";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
-import { Sun, Moon, BookOpen, Compass, PenLine, User, LogOut, Menu, X } from "lucide-react";
+import { Sun, Moon, BookOpen, Compass, PenLine, User, LogOut, Menu, X, Languages } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { useState } from "react";
 
@@ -14,6 +15,7 @@ const logoUrl = `${import.meta.env.BASE_URL}logo.png`;
 export function Navbar() {
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
+  const { lang, setLang, t } = useLanguage();
   const [location] = useLocation();
   const queryClient = useQueryClient();
   const { signOut } = useClerk();
@@ -25,10 +27,10 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { href: "/", label: "الرئيسية", icon: BookOpen },
-    { href: "/explore", label: "اكتشف", icon: Compass },
-    ...(user ? [{ href: "/write", label: "اكتب", icon: PenLine }] : []),
-    ...(user ? [{ href: `/profile/${user.username}`, label: "ملفي", icon: User }] : []),
+    { href: "/", label: t("الرئيسية", "Home"), icon: BookOpen },
+    { href: "/explore", label: t("اكتشف", "Explore"), icon: Compass },
+    ...(user ? [{ href: "/write", label: t("اكتب", "Write"), icon: PenLine }] : []),
+    ...(user ? [{ href: `/profile/${user.username}`, label: t("ملفي", "Profile"), icon: User }] : []),
   ];
 
   return (
@@ -44,7 +46,7 @@ export function Navbar() {
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
             <span className="font-serif text-xl font-bold text-foreground tracking-tight group-hover:opacity-80 transition-opacity">
-              روايتي
+              {t("روايتي", "Riwayati")}
             </span>
           </span>
         </Link>
@@ -70,6 +72,16 @@ export function Navbar() {
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
+          {/* Language toggle */}
+          <button
+            onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs font-bold"
+            aria-label="تبديل اللغة / Toggle Language"
+            title={lang === "ar" ? "Switch to English" : "التبديل للعربية"}
+          >
+            {lang === "ar" ? "EN" : "ع"}
+          </button>
+
           <button
             onClick={toggle}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -102,12 +114,12 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-2">
               <Link href="/sign-in">
                 <button className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-login">
-                  دخول
+                  {t("دخول", "Sign In")}
                 </button>
               </Link>
               <Link href="/sign-up">
                 <button className="px-4 py-1.5 text-sm font-medium bg-foreground text-background rounded-lg hover:opacity-80 transition-opacity" data-testid="link-register">
-                  انضم
+                  {t("انضم", "Join")}
                 </button>
               </Link>
             </div>
@@ -143,12 +155,12 @@ export function Navbar() {
             <>
               <Link href="/sign-in">
                 <button className="w-full mt-2 px-3 py-2 text-sm font-medium text-center text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>
-                  دخول
+                  {t("دخول", "Sign In")}
                 </button>
               </Link>
               <Link href="/sign-up">
                 <button className="w-full px-3 py-2 text-sm font-medium text-center bg-foreground text-background rounded-lg hover:opacity-80" onClick={() => setMobileOpen(false)}>
-                  انضم مجاناً
+                  {t("انضم مجاناً", "Join Free")}
                 </button>
               </Link>
             </>
@@ -158,7 +170,7 @@ export function Navbar() {
               onClick={() => { handleLogout(); setMobileOpen(false); }}
               className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-muted mt-2"
             >
-              <LogOut size={16} /> خروج
+              <LogOut size={16} /> {t("خروج", "Sign Out")}
             </button>
           )}
         </div>
@@ -170,14 +182,15 @@ export function Navbar() {
 export function MobileBottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const navLinks = [
-    { href: "/", label: "الرئيسية", icon: BookOpen },
-    { href: "/explore", label: "اكتشف", icon: Compass },
+    { href: "/", label: t("الرئيسية", "Home"), icon: BookOpen },
+    { href: "/explore", label: t("اكتشف", "Explore"), icon: Compass },
     ...(user
-      ? [{ href: "/write", label: "اكتب", icon: PenLine }]
-      : [{ href: "/sign-in", label: "دخول", icon: User }]),
-    ...(user ? [{ href: `/profile/${user.username}`, label: "ملفي", icon: User }] : []),
+      ? [{ href: "/write", label: t("اكتب", "Write"), icon: PenLine }]
+      : [{ href: "/sign-in", label: t("دخول", "Sign In"), icon: User }]),
+    ...(user ? [{ href: `/profile/${user.username}`, label: t("ملفي", "Profile"), icon: User }] : []),
   ];
 
   return (

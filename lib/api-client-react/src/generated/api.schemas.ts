@@ -100,6 +100,15 @@ export interface UserProfile {
   links: Link[];
 }
 
+export interface UsernameUpdate {
+  /**
+   * @minLength 3
+   * @maxLength 30
+   * @pattern ^[a-z0-9_]+$
+   */
+  username: string;
+}
+
 export interface ProfileUpdate {
   /**
    * @minLength 1
@@ -242,6 +251,17 @@ export interface PlatformStats {
   totalAuthors: number;
   totalChapters: number;
   genres?: GenreCount[];
+}
+
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
 }
 
 export type ExploreBooksParams = {

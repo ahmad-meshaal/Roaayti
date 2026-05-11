@@ -31,5 +31,8 @@ export * from "./platformStats";
 export * from "./profileUpdate";
 export * from "./registerInput";
 export * from "./successResponse";
+export * from "./uploadUrlRequest";
+export * from "./uploadUrlResponse";
 export * from "./user";
+export * from "./usernameUpdate";
 export * from "./userProfile";

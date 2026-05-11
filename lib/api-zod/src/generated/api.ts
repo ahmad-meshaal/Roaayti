@@ -8,6 +8,27 @@
 import * as zod from "zod";
 
 /**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * @summary Serve an uploaded object
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -131,6 +152,31 @@ export const UpdateMyProfileBody = zod.object({
 });
 
 export const UpdateMyProfileResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  bio: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update current user username (must be unique)
+ */
+export const updateMyUsernameBodyUsernameMin = 3;
+export const updateMyUsernameBodyUsernameMax = 30;
+
+export const updateMyUsernameBodyUsernameRegExp = new RegExp("^[a-z0-9_]+$");
+
+export const UpdateMyUsernameBody = zod.object({
+  username: zod
+    .string()
+    .min(updateMyUsernameBodyUsernameMin)
+    .max(updateMyUsernameBodyUsernameMax)
+    .regex(updateMyUsernameBodyUsernameRegExp),
+});
+
+export const UpdateMyUsernameResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),

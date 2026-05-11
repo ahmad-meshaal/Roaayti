@@ -6,9 +6,11 @@ import {
   getGetBookQueryKey, getGetChaptersQueryKey, getGetMyBooksQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/language";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Plus, Trash2, Check, ChevronRight, Lock, Sparkles, X } from "lucide-react";
+import { useUpload } from "@workspace/object-storage-web";
+import { ArrowRight, Plus, Trash2, Check, ChevronRight, Lock, Sparkles, X, ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GENRES = ["fiction", "romance", "drama", "history", "science", "mystery", "fantasy", "horror", "poetry"];
@@ -37,10 +39,23 @@ export default function WriteBookPage() {
   const [bookGenre, setBookGenre] = useState("fiction");
   const [bookStatus, setBookStatus] = useState<"draft" | "published">("draft");
   const [bookIsAdult, setBookIsAdult] = useState(false);
+  const [bookCoverUrl, setBookCoverUrl] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const { uploadFile, isUploading: isCoverUploading } = useUpload({
+    onSuccess: (res) => {
+      const url = `/api/storage${res.objectPath}`;
+      setBookCoverUrl(url);
+      toast({ title: "تم رفع الغلاف بنجاح" });
+    },
+    onError: () => toast({ title: "خطأ في رفع الغلاف", variant: "destructive" }),
+  });
+
+  const { t } = useLanguage();
   const [showAi, setShowAi] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLanguage, setAiLanguage] = useState<"ar" | "en">("ar");
   const [aiLoading, setAiLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -63,6 +78,7 @@ export default function WriteBookPage() {
       setBookGenre(book.genre);
       setBookStatus(book.status as "draft" | "published");
       setBookIsAdult(book.isAdult);
+      setBookCoverUrl(book.coverUrl ?? null);
     }
   }, [book]);
 
@@ -134,7 +150,7 @@ export default function WriteBookPage() {
 
   const handleSaveBookSettings = () => {
     updateBook.mutate(
-      { id: bookId, data: { title: bookTitle, description: bookDesc, genre: bookGenre, status: bookStatus, isAdult: bookIsAdult } },
+      { id: bookId, data: { title: bookTitle, description: bookDesc, genre: bookGenre, status: bookStatus, isAdult: bookIsAdult, coverUrl: bookCoverUrl ?? undefined } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetBookQueryKey(bookId) });
@@ -157,7 +173,7 @@ export default function WriteBookPage() {
       const response = await fetch("/api/ai/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: aiPrompt, genre: book?.genre, title: book?.title }),
+        body: JSON.stringify({ prompt: aiPrompt, genre: book?.genre, title: book?.title, language: aiLanguage }),
         signal: ctrl.signal,
       });
 
@@ -262,6 +278,47 @@ export default function WriteBookPage() {
         {/* Settings panel */}
         {showSettings && (
           <div className="p-4 border-b border-border bg-muted/30 space-y-3">
+            {/* Cover Upload */}
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-1.5 font-sans">غلاف الكتاب</p>
+              <div
+                onClick={() => !isCoverUploading && coverInputRef.current?.click()}
+                className={cn(
+                  "relative w-full h-28 rounded-lg border-2 border-dashed border-input overflow-hidden cursor-pointer transition-colors hover:border-foreground/40 group",
+                  isCoverUploading && "opacity-60 cursor-wait"
+                )}
+              >
+                {bookCoverUrl ? (
+                  <img src={bookCoverUrl} alt="غلاف الكتاب" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
+                    <ImagePlus size={20} />
+                    <span className="text-[10px] font-sans">ارفع صورة الغلاف</span>
+                  </div>
+                )}
+                {isCoverUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                    <Loader2 size={20} className="animate-spin" />
+                  </div>
+                )}
+                {bookCoverUrl && !isCoverUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ImagePlus size={18} className="text-white" />
+                  </div>
+                )}
+              </div>
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) await uploadFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
             <input
               value={bookTitle}
               onChange={e => setBookTitle(e.target.value)}
@@ -396,23 +453,38 @@ export default function WriteBookPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-foreground" />
-              <h3 className="font-serif font-semibold text-sm text-foreground">الكتابة بالذكاء الاصطناعي</h3>
+              <h3 className="font-serif font-semibold text-sm text-foreground">{t("الكتابة بالذكاء الاصطناعي", "AI Writing")}</h3>
             </div>
             <button onClick={() => setShowAi(false)} className="text-muted-foreground hover:text-foreground transition-colors">
               <X size={16} />
             </button>
           </div>
           <p className="text-xs text-muted-foreground mb-3 font-sans">
-            أخبر الذكاء الاصطناعي بفكرة الفصل وسيكتب لك نصاً طويلاً جاهزاً للتعديل
+            {t("أخبر الذكاء الاصطناعي بفكرة الفصل وسيكتب لك نصاً طويلاً جاهزاً للتعديل", "Tell the AI your chapter idea and it will write a full text ready for editing")}
           </p>
+          {/* Language selector */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setAiLanguage("ar")}
+              className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium font-sans border transition-colors", aiLanguage === "ar" ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:text-foreground")}
+            >
+              🇸🇦 عربي
+            </button>
+            <button
+              onClick={() => setAiLanguage("en")}
+              className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium font-sans border transition-colors", aiLanguage === "en" ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:text-foreground")}
+            >
+              🇺🇸 English
+            </button>
+          </div>
           <textarea
             value={aiPrompt}
             onChange={e => setAiPrompt(e.target.value)}
-            placeholder="مثال: بطلنا يكتشف رسالة سرية في مكتبة قديمة تقوده إلى كنز مخفي منذ قرون..."
+            placeholder={aiLanguage === "ar" ? "مثال: بطلنا يكتشف رسالة سرية في مكتبة قديمة تقوده إلى كنز مخفي منذ قرون..." : "E.g. Our hero discovers a secret letter in an old library leading to a hidden treasure..."}
             rows={3}
             disabled={aiLoading}
             className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none placeholder:text-muted-foreground mb-3 disabled:opacity-60"
-            dir="auto"
+            dir={aiLanguage === "ar" ? "rtl" : "ltr"}
           />
           <div className="flex gap-2">
             <button
@@ -423,12 +495,12 @@ export default function WriteBookPage() {
               {aiLoading ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-                  جارٍ التوليد...
+                  {t("جارٍ التوليد...", "Generating...")}
                 </>
               ) : (
                 <>
                   <Sparkles size={14} />
-                  توليد الفصل
+                  {t("توليد الفصل", "Generate Chapter")}
                 </>
               )}
             </button>
@@ -437,7 +509,7 @@ export default function WriteBookPage() {
                 onClick={() => { abortRef.current?.abort(); setAiLoading(false); }}
                 className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                إيقاف
+                {t("إيقاف", "Stop")}
               </button>
             )}
           </div>

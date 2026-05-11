@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
+import { LanguageProvider } from "@/lib/language";
 import { Navbar, MobileBottomNav } from "@/components/Navbar";
 
 import HomePage from "@/pages/home";
@@ -180,12 +181,14 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <AuthProvider>
-            <TooltipProvider>
-              <Layout />
-              <Toaster />
-            </TooltipProvider>
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <TooltipProvider>
+                <Layout />
+                <Toaster />
+              </TooltipProvider>
+            </AuthProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ClerkProvider>

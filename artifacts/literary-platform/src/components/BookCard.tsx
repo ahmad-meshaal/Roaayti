@@ -31,7 +31,7 @@ const GENRE_COLORS: Record<string, string> = {
 };
 
 export function BookCard({ book, className }: BookCardProps) {
-  const genreColor = GENRE_COLORS[book.genre?.toLowerCase()] ?? "bg-muted text-muted-foreground";
+  const genres = book.genre ? book.genre.split(",").map(g => g.trim()).filter(Boolean) : [];
 
   return (
     <Link href={`/read/${book.id}`}>
@@ -60,9 +60,15 @@ export function BookCard({ book, className }: BookCardProps) {
 
         {/* Info */}
         <div className="p-4">
-          <span className={cn("inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-2", genreColor)}>
-            {book.genre}
-          </span>
+          {genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {genres.map((g, i) => (
+                <span key={i} className={cn("inline-block text-xs font-medium px-2 py-0.5 rounded-full", GENRE_COLORS[g.toLowerCase()] ?? "bg-muted text-muted-foreground")}>
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
           <h3 className="font-serif font-semibold text-base leading-snug line-clamp-2 mb-1 text-foreground group-hover:text-primary transition-colors">
             {book.title}
           </h3>

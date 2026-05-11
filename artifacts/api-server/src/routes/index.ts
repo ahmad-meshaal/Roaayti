@@ -9,6 +9,7 @@ import exploreRouter from "./explore";
 import aiRouter from "./ai";
 import followersRouter from "./followers";
 import adminRouter from "./admin";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(exploreRouter);
 router.use(aiRouter);
 router.use(followersRouter);
 router.use(adminRouter);
+router.use(storageRouter);
 
 export default router;
