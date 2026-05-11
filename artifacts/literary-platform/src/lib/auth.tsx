@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useUser } from "@clerk/react";
+import { useUser, useSession } from "@clerk/react";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -21,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({ user: null, isLoading: true
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded } = useUser();
+  const { session } = useSession();
   const queryClient = useQueryClient();
   const syncedRef = useRef<string | null>(null);
   const [syncDone, setSyncDone] = useState(false);
@@ -28,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!clerkUser) {
+    if (!clerkUser || !session) {
       syncedRef.current = null;
       setSyncDone(false);
       return;
@@ -43,10 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const displayName = clerkUser.fullName || clerkUser.firstName || "مستخدم";
     const avatarUrl = clerkUser.imageUrl;
 
-    fetch("/api/auth/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, displayName, avatarUrl }),
+    session.getToken().then(token => {
+      return fetch("/api/auth/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email, displayName, avatarUrl }),
+      });
     })
       .then(() => {
         syncedRef.current = clerkUser.id;
@@ -56,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         setSyncDone(true);
       });
-  }, [clerkUser?.id, isLoaded, queryClient]);
+  }, [clerkUser?.id, isLoaded, session, queryClient]);
 
   const { data: user, isLoading: meLoading } = useGetMe({
     query: {

@@ -1,6 +1,6 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, SignIn, SignUp } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useAuth as useClerkAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,6 +9,8 @@ import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
 import { LanguageProvider } from "@/lib/language";
 import { Navbar, MobileBottomNav } from "@/components/Navbar";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { useEffect } from "react";
 
 import HomePage from "@/pages/home";
 import ExplorePage from "@/pages/explore";
@@ -151,6 +153,20 @@ function Layout() {
   );
 }
 
+/**
+ * Sets the Clerk session token on every API request so the backend
+ * Clerk middleware can authenticate the caller. This is needed because
+ * cookies may not be forwarded correctly through the Replit reverse proxy.
+ */
+function ClerkTokenSetup() {
+  const { getToken } = useClerkAuth();
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+    return () => { setAuthTokenGetter(null); };
+  }, [getToken]);
+  return null;
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -179,6 +195,7 @@ function ClerkProviderWithRoutes() {
         },
       }}
     >
+      <ClerkTokenSetup />
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <LanguageProvider>
