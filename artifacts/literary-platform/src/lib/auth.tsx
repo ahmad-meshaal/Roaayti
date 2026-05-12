@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useUser, useSession } from "@clerk/react";
-import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useUser, useSession, useAuth as useClerkAuth } from "@clerk/react";
+import { useGetMe, getGetMeQueryKey, setAuthTokenGetter } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthUser {
@@ -20,12 +20,29 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({ user: null, isLoading: true });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user: clerkUser, isLoaded } = useUser();
-  const { session } = useSession();
+  const { user: clerkUser, isLoaded: userLoaded } = useUser();
+  const { session, isLoaded: sessionLoaded } = useSession();
+  const { getToken } = useClerkAuth();
   const queryClient = useQueryClient();
   const syncedRef = useRef<string | null>(null);
   const [syncDone, setSyncDone] = useState(false);
 
+  const isLoaded = userLoaded && sessionLoaded;
+
+  // Register Clerk token getter so every API call carries the JWT.
+  // This runs before any query fires because useGetMe is gated on syncDone.
+  useEffect(() => {
+    if (!clerkUser) {
+      setAuthTokenGetter(null);
+      return;
+    }
+    setAuthTokenGetter(getToken);
+    return () => {
+      setAuthTokenGetter(null);
+    };
+  }, [clerkUser, getToken]);
+
+  // Sync Clerk user to our database
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -44,22 +61,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const displayName = clerkUser.fullName || clerkUser.firstName || "مستخدم";
     const avatarUrl = clerkUser.imageUrl;
 
-    session.getToken().then(token => {
+    session.getToken().then((token) => {
       return fetch("/api/auth/sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ email, displayName, avatarUrl }),
       });
     })
-      .then(() => {
+      .then((res) => {
+        if (!res.ok) throw new Error("sync failed");
         syncedRef.current = clerkUser.id;
         setSyncDone(true);
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       })
       .catch(() => {
+        // Still let the app load even if sync fails
         setSyncDone(true);
       });
   }, [clerkUser?.id, isLoaded, session, queryClient]);
@@ -67,13 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: meLoading } = useGetMe({
     query: {
       queryKey: getGetMeQueryKey(),
-      retry: false,
+      retry: 2,
       staleTime: 5 * 60 * 1000,
       enabled: syncDone,
     },
   });
 
-  const isLoading = !isLoaded || (!!clerkUser && !syncDone) || (syncDone && !!clerkUser && meLoading);
+  const isLoading =
+    !isLoaded ||
+    (!!clerkUser && !syncDone) ||
+    (syncDone && !!clerkUser && meLoading);
 
   return (
     <AuthContext.Provider value={{ user: user ?? null, isLoading }}>

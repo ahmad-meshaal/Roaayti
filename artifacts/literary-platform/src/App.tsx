@@ -1,6 +1,6 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, SignIn, SignUp, useAuth as useClerkAuth } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,8 +9,6 @@ import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
 import { LanguageProvider } from "@/lib/language";
 import { Navbar, MobileBottomNav } from "@/components/Navbar";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { useEffect } from "react";
 
 import HomePage from "@/pages/home";
 import ExplorePage from "@/pages/explore";
@@ -19,6 +17,10 @@ import WritePage from "@/pages/write";
 import WriteBookPage from "@/pages/write-book";
 import ProfilePage from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
+import PrivacyPage from "@/pages/privacy";
+import TermsPage from "@/pages/terms";
+import AboutPage from "@/pages/about";
+import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -124,6 +126,34 @@ function SignUpPage() {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="border-t border-border bg-muted/30 mt-16 pb-20 md:pb-0" dir="rtl">
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <p className="text-muted-foreground text-sm font-sans">
+            © {new Date().getFullYear()} روايتي — جميع الحقوق محفوظة
+          </p>
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-sans">
+            {[
+              { href: "/about", label: "من نحن" },
+              { href: "/privacy", label: "سياسة الخصوصية" },
+              { href: "/terms", label: "شروط الاستخدام" },
+              { href: "/contact", label: "تواصل معنا" },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href}>
+                <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  {label}
+                </span>
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 function AppRouter() {
   return (
     <Switch>
@@ -136,6 +166,10 @@ function AppRouter() {
       <Route path="/write/:bookId" component={WriteBookPage} />
       <Route path="/profile/:username" component={ProfilePage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/contact" component={ContactPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -143,28 +177,15 @@ function AppRouter() {
 
 function Layout() {
   return (
-    <div className="min-h-screen bg-background text-foreground" dir="rtl">
+    <div className="min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
       <Navbar />
-      <main>
+      <main className="flex-1">
         <AppRouter />
       </main>
+      <Footer />
       <MobileBottomNav />
     </div>
   );
-}
-
-/**
- * Sets the Clerk session token on every API request so the backend
- * Clerk middleware can authenticate the caller. This is needed because
- * cookies may not be forwarded correctly through the Replit reverse proxy.
- */
-function ClerkTokenSetup() {
-  const { getToken } = useClerkAuth();
-  useEffect(() => {
-    setAuthTokenGetter(() => getToken());
-    return () => { setAuthTokenGetter(null); };
-  }, [getToken]);
-  return null;
 }
 
 function ClerkProviderWithRoutes() {
@@ -195,7 +216,6 @@ function ClerkProviderWithRoutes() {
         },
       }}
     >
-      <ClerkTokenSetup />
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <LanguageProvider>
