@@ -5,15 +5,14 @@ import { useTheme } from "@/lib/theme";
 import { useLanguage } from "@/lib/language";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
-import { Sun, Moon, BookOpen, Compass, PenLine, User, LogOut, Menu, X, Languages } from "lucide-react";
+import { Sun, Moon, BookOpen, Compass, PenLine, User, LogOut, Menu, X } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { useState } from "react";
 
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const logoUrl = `${import.meta.env.BASE_URL}logo.png`;
 
 export function Navbar() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { theme, toggle } = useTheme();
   const { lang, setLang, t } = useLanguage();
   const [location] = useLocation();
@@ -36,7 +35,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
       <nav className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo + Brand */}
+        {/* Logo */}
         <Link href="/">
           <span className="flex items-center gap-2.5 cursor-pointer group">
             <img
@@ -61,7 +60,6 @@ export function Navbar() {
                     ? "text-foreground bg-muted font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
-                data-testid={`link-nav-${label}`}
               >
                 <Icon size={16} />
                 {label}
@@ -76,60 +74,63 @@ export function Navbar() {
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs font-bold"
-            aria-label="تبديل اللغة / Toggle Language"
-            title={lang === "ar" ? "Switch to English" : "التبديل للعربية"}
+            aria-label="تبديل اللغة"
           >
             {lang === "ar" ? "EN" : "ع"}
           </button>
 
+          {/* Theme toggle */}
           <button
             onClick={toggle}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            data-testid="button-theme-toggle"
             aria-label="تبديل الوضع"
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          {user ? (
-            <div className="hidden md:flex items-center gap-2">
-              <Link href="/settings">
-                <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold cursor-pointer hover:opacity-80 transition-opacity overflow-hidden border border-border">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-serif text-xs">{getInitials(user.displayName)}</span>
-                  )}
-                </div>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
-                data-testid="button-logout"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          ) : (
-            <div className="hidden md:flex items-center gap-2">
-              <Link href="/sign-in">
-                <button className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-login">
-                  {t("دخول", "Sign In")}
+          {/* Auth section — skeleton while loading, real content after */}
+          <div className="hidden md:flex items-center gap-2">
+            {isLoading ? (
+              /* Skeleton during auth check — prevents flash of "انضم" */
+              <div className="w-24 h-8 rounded-lg bg-muted animate-pulse" />
+            ) : user ? (
+              <>
+                <Link href="/settings">
+                  <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold cursor-pointer hover:opacity-80 transition-opacity overflow-hidden border border-border">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-serif text-xs">{getInitials(user.displayName)}</span>
+                    )}
+                  </div>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+                >
+                  <LogOut size={16} />
                 </button>
-              </Link>
-              <Link href="/sign-up">
-                <button className="px-4 py-1.5 text-sm font-medium bg-foreground text-background rounded-lg hover:opacity-80 transition-opacity" data-testid="link-register">
-                  {t("انضم", "Join")}
-                </button>
-              </Link>
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <Link href="/sign-in">
+                  <button className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    {t("دخول", "Sign In")}
+                  </button>
+                </Link>
+                <Link href="/sign-up">
+                  <button className="px-4 py-1.5 text-sm font-medium bg-foreground text-background rounded-lg hover:opacity-80 transition-opacity">
+                    {t("انضم", "Join")}
+                  </button>
+                </Link>
+              </>
+            )}
+          </div>
 
           {/* Mobile menu toggle */}
           <button
             className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => setMobileOpen(v => !v)}
-            data-testid="button-mobile-menu"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -151,7 +152,10 @@ export function Navbar() {
               </span>
             </Link>
           ))}
-          {!user && (
+
+          {isLoading ? (
+            <div className="w-full h-10 rounded-lg bg-muted animate-pulse mt-2" />
+          ) : !user ? (
             <>
               <Link href="/sign-in">
                 <button className="w-full mt-2 px-3 py-2 text-sm font-medium text-center text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>
@@ -164,8 +168,7 @@ export function Navbar() {
                 </button>
               </Link>
             </>
-          )}
-          {user && (
+          ) : (
             <button
               onClick={() => { handleLogout(); setMobileOpen(false); }}
               className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-muted mt-2"
@@ -181,7 +184,7 @@ export function Navbar() {
 
 export function MobileBottomNav() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { t } = useLanguage();
 
   const navLinks = [
@@ -194,17 +197,26 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border safe-area-pb">
       <div className="flex items-center justify-around h-16">
-        {navLinks.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href}>
-            <div className={`flex flex-col items-center gap-1 px-4 py-1 cursor-pointer transition-colors
-              ${location === href ? "text-foreground" : "text-muted-foreground"}`}>
-              <Icon size={22} strokeWidth={location === href ? 2.5 : 1.75} />
-              <span className="text-[10px] font-medium">{label}</span>
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-1 px-4 py-1">
+              <div className="w-6 h-6 rounded bg-muted animate-pulse" />
+              <div className="w-10 h-2 rounded bg-muted animate-pulse" />
             </div>
-          </Link>
-        ))}
+          ))
+        ) : (
+          navLinks.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href}>
+              <div className={`flex flex-col items-center gap-1 px-4 py-1 cursor-pointer transition-colors
+                ${location === href ? "text-foreground" : "text-muted-foreground"}`}>
+                <Icon size={22} strokeWidth={location === href ? 2.5 : 1.75} />
+                <span className="text-[10px] font-medium">{label}</span>
+              </div>
+            </Link>
+          ))
+        )}
       </div>
     </nav>
   );
